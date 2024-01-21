@@ -22,10 +22,10 @@ func TestTimeout(t *testing.T) {
 
 func TestReturn(t *testing.T) {
 	sb := NewSandbox()
-	v, err := sb.Run(context.Background(), "return 123")
+	vs, err := sb.Run(context.Background(), "return 123")
 
-	if assert.NoError(t, err) {
-		if v, ok := v.(lua.LNumber); ok {
+	if assert.NoError(t, err) && assert.Len(t, vs, 1) {
+		if v, ok := vs[0].(lua.LNumber); ok {
 			assert.Equal(t, float64(v), 123.0)
 		} else {
 			assert.FailNow(t, "expected return value to be a number")
@@ -38,7 +38,7 @@ func TestNoReturn(t *testing.T) {
 	v, err := sb.Run(context.Background(), "")
 
 	if assert.NoError(t, err) {
-		assert.Equal(t, v, lua.LNil)
+		assert.Len(t, v, 0)
 	}
 }
 
@@ -63,7 +63,7 @@ func TestParallel(t *testing.T) {
 		}),
 	)
 
-	resCh := make(chan shine.Result[lua.LValue], numParallel)
+	resCh := make(chan shine.Result[[]lua.LValue], numParallel)
 	for i := 0; i < numParallel; i++ {
 		wgDone.Add(1)
 		go func() {
@@ -79,11 +79,13 @@ func TestParallel(t *testing.T) {
 	countRes := 0
 	for res := range resCh {
 		if assert.True(t, res.IsOk()) {
-			v := res.Unwrap()
-			if num, ok := res.Unwrap().(lua.LNumber); ok {
-				assert.Equal(t, 1.0, float64(num))
-			} else {
-				assert.Failf(t, "expected return value to be a number", "was %v", v.Type())
+			vs := res.Unwrap()
+			if assert.Len(t, vs, 1) {
+				if num, ok := vs[0].(lua.LNumber); ok {
+					assert.Equal(t, 1.0, float64(num))
+				} else {
+					assert.Failf(t, "expected return value to be a number", "was %v", vs[0].Type())
+				}
 			}
 		}
 
@@ -98,18 +100,29 @@ func TestRunFunc(t *testing.T) {
 	defer cancel()
 
 	sb := NewSandbox()
-	v, err := sb.Run(ctx, "return function(arg) return arg end")
+	vs, err := sb.Run(ctx, "return function(arg) return arg end")
 
-	if assert.NoError(t, err) {
-		if fn, ok := v.(*lua.LFunction); ok {
-			v, err = sb.RunFunc(ctx, fn, lua.LString("hello world"))
+	if assert.NoError(t, err) && assert.Len(t, vs, 1) {
+		if fn, ok := vs[0].(*lua.LFunction); ok {
+			vs, err = sb.RunFunc(ctx, fn, lua.LString("hello world"))
 
-			if assert.NoError(t, err) {
-				assert.Equal(t, lua.LString("hello world"), v)
+			if assert.NoError(t, err) && assert.Len(t, vs, 1) {
+				assert.Equal(t, lua.LString("hello world"), vs[0])
 			}
 		} else {
-			assert.Failf(t, "expected return value to be a function", "was %v", v.Type())
+			assert.Failf(t, "expected return value to be a function", "was %v", vs[0].Type())
 		}
+	}
+}
+
+func TestVararg(t *testing.T) {
+	sb := NewSandbox()
+	vs, err := sb.Run(context.Background(), "return 1,2,3")
+
+	if assert.NoError(t, err) && assert.Len(t, vs, 3) {
+		assert.Equal(t, lua.LNumber(1), vs[0])
+		assert.Equal(t, lua.LNumber(2), vs[1])
+		assert.Equal(t, lua.LNumber(3), vs[2])
 	}
 }
 

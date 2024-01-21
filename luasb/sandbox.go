@@ -11,13 +11,13 @@ type Sandbox struct {
 	mutex sync.Mutex
 }
 
-func (s *Sandbox) Run(ctx context.Context, script string) (lua.LValue, error) {
+func (s *Sandbox) Run(ctx context.Context, script string) ([]lua.LValue, error) {
 	return s.run(ctx, func() error {
 		return s.l.DoString(script)
 	})
 }
 
-func (s *Sandbox) RunFunc(ctx context.Context, fn *lua.LFunction, args ...lua.LValue) (lua.LValue, error) {
+func (s *Sandbox) RunFunc(ctx context.Context, fn *lua.LFunction, args ...lua.LValue) ([]lua.LValue, error) {
 	return s.run(ctx, func() error {
 		s.l.Push(fn)
 
@@ -30,7 +30,7 @@ func (s *Sandbox) RunFunc(ctx context.Context, fn *lua.LFunction, args ...lua.LV
 	})
 }
 
-func (s *Sandbox) run(ctx context.Context, fn func() error) (lua.LValue, error) {
+func (s *Sandbox) run(ctx context.Context, fn func() error) ([]lua.LValue, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -40,11 +40,19 @@ func (s *Sandbox) run(ctx context.Context, fn func() error) (lua.LValue, error) 
 	s.l.SetContext(ctx)
 	defer s.l.RemoveContext()
 
+	top := s.l.GetTop()
 	if err := fn(); err != nil {
 		return nil, err
 	}
 
-	return s.l.Get(s.l.GetTop()), nil
+	numRet := s.l.GetTop() - top
+	res := make([]lua.LValue, numRet)
+
+	for i := 0; i < numRet; i++ {
+		res[i] = s.l.Get(top + i + 1)
+	}
+
+	return res, nil
 }
 
 type Option func(l *lua.LState)
