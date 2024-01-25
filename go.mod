@@ -3,7 +3,7 @@ module github.com/its-felix/gw2-addon-manager
 go 1.21
 
 require (
-	github.com/its-felix/shine v0.2.0
+	github.com/its-felix/shine v1.2.0
 	github.com/labstack/echo/v4 v4.11.4
 	github.com/stretchr/testify v1.8.4
 	github.com/yuin/gopher-lua v1.1.1

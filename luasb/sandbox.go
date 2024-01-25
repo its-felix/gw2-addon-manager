@@ -30,6 +30,13 @@ func (s *Sandbox) RunFunc(ctx context.Context, fn *lua.LFunction, args ...lua.LV
 	})
 }
 
+func (s *Sandbox) Do(fn func(l *lua.LState) lua.LValue) lua.LValue {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	return fn(s.l)
+}
+
 func (s *Sandbox) run(ctx context.Context, fn func() error) ([]lua.LValue, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
