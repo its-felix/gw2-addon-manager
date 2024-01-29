@@ -2,7 +2,7 @@ package luasb
 
 import (
 	"context"
-	"github.com/its-felix/shine"
+	"github.com/its-felix/shine/v2"
 	"github.com/stretchr/testify/assert"
 	lua "github.com/yuin/gopher-lua"
 	"sync"
@@ -63,7 +63,7 @@ func TestParallel(t *testing.T) {
 		}),
 	)
 
-	resCh := make(chan shine.Result[[]lua.LValue, error], numParallel)
+	resCh := make(chan shine.Result[[]lua.LValue], numParallel)
 	for i := 0; i < numParallel; i++ {
 		wgDone.Add(1)
 		go func() {
@@ -91,7 +91,7 @@ func TestParallel(t *testing.T) {
 		countRes++
 	}
 
-	assert.Equal(t, countRes, numParallel)
+	assert.Equal(t, numParallel, countRes)
 }
 
 func TestRunFunc(t *testing.T) {

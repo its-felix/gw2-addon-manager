@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/its-felix/gw2-addon-manager/ui"
 	"github.com/its-felix/gw2-addon-manager/web"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -21,6 +22,7 @@ import (
 const (
 	listenAddr      = "127.0.0.1:8080"
 	tokenCookieName = "token"
+	proxyMode       = true
 )
 
 func main() {
@@ -75,7 +77,17 @@ func setup(shutdownFn func()) (*web.Server, string, error) {
 	e := echo.New()
 	e.Use(web.HeadersMiddleware())
 
-	e.Group("/", middleware.Proxy(middleware.NewRoundRobinBalancer([]*middleware.ProxyTarget{{URL: proxyUrl}})))
+	if proxyMode {
+		e.Group("/*", middleware.Proxy(middleware.NewRoundRobinBalancer([]*middleware.ProxyTarget{{URL: proxyUrl}})))
+	} else {
+		e.Group("/*", middleware.StaticWithConfig(middleware.StaticConfig{
+			Root:       "dist",
+			Index:      "index.html",
+			Browse:     false,
+			HTML5:      true,
+			Filesystem: ui.FS(),
+		}))
+	}
 
 	e.HEAD("/health", func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
